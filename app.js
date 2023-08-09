@@ -7,7 +7,7 @@ const bodyParser = require('body-parser');
 const router = require('./routes/index');
 require('dotenv').config();
 
-const { PORT } = process.env;
+const PORT = 3000;
 
 mongoose
   .connect('mongodb://127.0.0.1/mydb', {
