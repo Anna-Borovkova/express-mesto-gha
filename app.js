@@ -7,14 +7,11 @@ const bodyParser = require('body-parser');
 const router = require('./routes/index');
 require('dotenv').config();
 
-const { PORT, MONGODB_URL } = process.env;
+const { PORT } = process.env;
 
 mongoose
   .connect('mongodb://127.0.0.1/mydb', {
     useNewUrlParser: true,
-  })
-  .then(() => {
-    console.log('Connected to db');
   });
 
 app.use(bodyParser.json());
