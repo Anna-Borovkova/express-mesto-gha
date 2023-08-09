@@ -10,7 +10,7 @@ require('dotenv').config();
 const { PORT, MONGODB_URL } = process.env;
 
 mongoose
-  .connect(MONGODB_URL, {
+  .connect('mongodb://127.0.0.1/mydb', {
     useNewUrlParser: true,
   })
   .then(() => {
