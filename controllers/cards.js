@@ -75,7 +75,7 @@ const dislikeCard = (req, res) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
     { $pull: { likes: req.user._id } }, // убрать _id из массива
-    { new: true },
+    { new: true, runValidators: true },
   )
     .then((card) => {
       if (!card) {
@@ -84,7 +84,18 @@ const dislikeCard = (req, res) => {
 
       return res.status(200).send(card);
     })
-    .catch(() => res.status(500).send({ message: 'Server Error' }));
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        return res.status(400).send({
+          message: `${Object.values(err.errors)
+            .map((error) => error.message)
+            .join(', ')}`,
+        });
+      }
+      return res.status(500).send({
+        message: 'Server Error',
+      });
+    });
 };
 
 module.exports = {
