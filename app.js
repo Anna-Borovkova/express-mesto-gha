@@ -24,6 +24,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(router);
+app.use('*', (res, req) => {return res.status(404).send({ message: 'Route not found' });})
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}`);
