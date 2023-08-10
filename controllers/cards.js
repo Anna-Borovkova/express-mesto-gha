@@ -41,7 +41,14 @@ const deleteCardById = (req, res) => {
 
       return res.status(200).send(card);
     })
-    .catch(() => res.status(500).send({ message: 'Server Error' }));
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        return res.status(400).send({ message: 'Cast error' });
+      }
+      return res.status(500).send({
+        message: 'Server Error',
+      });
+    });
 };
 
 const likeCard = (req, res) => {
@@ -58,12 +65,8 @@ const likeCard = (req, res) => {
       return res.status(200).send(card);
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return res.status(400).send({
-          message: `${Object.values(err.errors)
-            .map((error) => error.message)
-            .join(', ')}`,
-        });
+      if (err.name === 'CastError') {
+        return res.status(400).send({ message: 'Cast error' });
       }
       return res.status(500).send({
         message: 'Server Error',
@@ -85,12 +88,8 @@ const dislikeCard = (req, res) => {
       return res.status(200).send(card);
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return res.status(400).send({
-          message: `${Object.values(err.errors)
-            .map((error) => error.message)
-            .join(', ')}`,
-        });
+      if (err.name === 'CastError') {
+        return res.status(400).send({ message: 'Cast error' });
       }
       return res.status(500).send({
         message: 'Server Error',
