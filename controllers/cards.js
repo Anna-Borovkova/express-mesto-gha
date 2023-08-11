@@ -1,11 +1,13 @@
+const httpConstants = require('http2').constants;
+
 const Card = require('../models/card');
 
 const getCards = (req, res) => {
   Card.find()
     .then((cards) => {
-      res.status(200).send(cards);
+      res.status(httpConstants.HTTP_STATUS_OK).send(cards);
     })
-    .catch(() => res.status(500).send({
+    .catch(() => res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
       message: 'Server Error',
     }));
 };
@@ -15,17 +17,17 @@ const createCard = (req, res) => {
   const owner = req.user._id;
   Card.create({ name, link, owner })
     .then((card) => {
-      res.status(201).send({ card });
+      res.status(httpConstants.HTTP_STATUS_CREATED).send({ card });
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(400).send({
+        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({
           message: `${Object.values(err.errors)
             .map((error) => error.message)
             .join(', ')}`,
         });
       }
-      return res.status(500).send({
+      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
         message: 'Server Error',
       });
     });
@@ -34,18 +36,18 @@ const createCard = (req, res) => {
 const deleteCardById = (req, res) => {
   const { cardId } = req.params;
   return Card.findByIdAndRemove(cardId)
+    .orFail(new Error('NotValidId'))
     .then((card) => {
-      if (!card) {
-        return res.status(404).send({ message: 'Card not found' });
-      }
-
-      return res.status(200).send(card);
+      res.status(httpConstants.HTTP_STATUS_OK).send(card);
     })
     .catch((err) => {
-      if (err.name === 'CastError') {
-        return res.status(400).send({ message: 'Cast error' });
+      if (err.name === 'NotValidId') {
+        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
       }
-      return res.status(500).send({
+      if (err.name === 'CastError') {
+        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Cast error' });
+      }
+      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
         message: 'Server Error',
       });
     });
@@ -57,18 +59,18 @@ const likeCard = (req, res) => {
     { $addToSet: { likes: req.user._id } }, // добавить _id в массив, если его там нет
     { new: true, runValidators: true },
   )
+    .orFail(new Error('NotValidId'))
     .then((card) => {
-      if (!card) {
-        return res.status(404).send({ message: 'Card not found' });
-      }
-
-      return res.status(200).send(card);
+      res.status(httpConstants.HTTP_STATUS_OK).send(card);
     })
     .catch((err) => {
-      if (err.name === 'CastError') {
-        return res.status(400).send({ message: 'Cast error' });
+      if (err.name === 'NotValidId') {
+        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
       }
-      return res.status(500).send({
+      if (err.name === 'CastError') {
+        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Cast error' });
+      }
+      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
         message: 'Server Error',
       });
     });
@@ -80,18 +82,18 @@ const dislikeCard = (req, res) => {
     { $pull: { likes: req.user._id } }, // убрать _id из массива
     { new: true, runValidators: true },
   )
+    .orFail(new Error('NotValidId'))
     .then((card) => {
-      if (!card) {
-        return res.status(404).send({ message: 'Card not found' });
-      }
-
-      return res.status(200).send(card);
+      res.status(httpConstants.HTTP_STATUS_OK).send(card);
     })
     .catch((err) => {
-      if (err.name === 'CastError') {
-        return res.status(400).send({ message: 'Cast error' });
+      if (err.name === 'NotValidId') {
+        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
       }
-      return res.status(500).send({
+      if (err.name === 'CastError') {
+        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Cast error' });
+      }
+      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
         message: 'Server Error',
       });
     });
