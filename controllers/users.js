@@ -18,7 +18,7 @@ const getUserById = (req, res) => {
       res.status(httpConstants.HTTP_STATUS_OK).send(user);
     })
     .catch((err) => {
-      if (err.name === 'NotValidId') {
+      if (err.message === 'NotValidId') {
         return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'User not found' });
       }
       if (err.name === 'CastError') {
@@ -62,7 +62,7 @@ const updateUserProfile = (req, res) => {
       res.status(httpConstants.HTTP_STATUS_OK).send(user);
     })
     .catch((err) => {
-      if (err.name === 'NotValidId') {
+      if (err.message === 'NotValidId') {
         return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'User not found' });
       }
       if (err.name === 'ValidationError') {
@@ -89,7 +89,7 @@ const updateUserAvatar = (req, res) => {
       res.status(httpConstants.HTTP_STATUS_OK).send(user);
     })
     .catch((err) => {
-      if (err.name === 'NotValidId') {
+      if (err.message === 'NotValidId') {
         return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'User not found' });
       }
       if (err.name === 'ValidationError') {

@@ -41,7 +41,7 @@ const deleteCardById = (req, res) => {
       res.status(httpConstants.HTTP_STATUS_OK).send(card);
     })
     .catch((err) => {
-      if (err.name === 'NotValidId') {
+      if (err.message === 'NotValidId') {
         return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
       }
       if (err.name === 'CastError') {
@@ -64,7 +64,7 @@ const likeCard = (req, res) => {
       res.status(httpConstants.HTTP_STATUS_OK).send(card);
     })
     .catch((err) => {
-      if (err.name === 'NotValidId') {
+      if (err.message === 'NotValidId') {
         return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
       }
       if (err.name === 'CastError') {
@@ -87,7 +87,7 @@ const dislikeCard = (req, res) => {
       res.status(httpConstants.HTTP_STATUS_OK).send(card);
     })
     .catch((err) => {
-      if (err.name === 'NotValidId') {
+      if (err.message === 'NotValidId') {
         return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
       }
       if (err.name === 'CastError') {
