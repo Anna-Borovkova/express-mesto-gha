@@ -31,13 +31,13 @@ const deleteCardById = (req, res, next) => {
   const { cardId } = req.params;
   return Card.findById(cardId)
     .orFail(new Error('NotValidId'))
-    .then((card) => {
-      if (card.owner.toString() !== req.user._id) {
+    .then((checkedCard) => {
+      if (checkedCard.owner.toString() !== req.user._id) {
         return next(new DeleteForbiddenError('Delete forbidden'));
       }
       return Card.findByIdAndRemove(cardId)
-        .then((card) => {
-          res.status(httpConstants.HTTP_STATUS_OK).send(card);
+        .then((removedCard) => {
+          res.status(httpConstants.HTTP_STATUS_OK).send(removedCard);
         })
         .catch((err) => {
           if (err.name === 'CastError') {

@@ -50,7 +50,9 @@ const createUser = (req, res, next) => {
       password: hash,
     }))
     .then((user) => {
-      res.status(httpConstants.HTTP_STATUS_CREATED).send(user);
+      const userResponse = user.toObject();
+      delete userResponse.password;
+      res.status(httpConstants.HTTP_STATUS_CREATED).send(userResponse);
     })
     .catch((err) => {
       if (err.name === 'MongoServerError' && err.code === 11000) {
@@ -119,13 +121,13 @@ const login = (req, res, next) => {
         return res.status(httpConstants.HTTP_STATUS_OK).cookie('jwt', token, {
           maxAge: 3600000,
           httpOnly: true,
-        })
+        }).send({ message: 'Success' })
           .end();
       });
     })
     .catch((err) => {
       if (err.message === 'UserNotFound') {
-        return next(new NotFoundError('User not found'));
+        return next(new UnauthorizedError('User not found'));
       }
       return next(err);
     });

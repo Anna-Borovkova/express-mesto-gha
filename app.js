@@ -2,12 +2,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const router = require('./routes/index');
 const auth = require('./middlewares/auth');
 const errorHandler = require('./middlewares/error-handler');
 
 require('dotenv').config();
-const cookieParser = require('cookie-parser');
 
 const app = express();
 const { PORT = 3000, MONGODB_URL = 'mongodb://127.0.0.1:27017/mestodb' } = process.env;
