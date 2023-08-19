@@ -1,16 +1,24 @@
 const httpConstants = require('http2').constants;
-
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const UnauthorizedError = require('../errors/unauthorized-error');
+const NotFoundError = require('../errors/not-found-error');
+const BadRequestError = require('../errors/bad-request-error');
+const ConflictError = require('../errors/conflict-error');
 
-const getUsers = (req, res) => {
+const SALT_ROUNDS = 10;
+const { JWT_SECRET = 'SECRET_KEY' } = process.env;
+
+const getUsers = (req, res, next) => {
   User.find()
     .then((users) => {
       res.status(httpConstants.HTTP_STATUS_OK).send(users);
     })
-    .catch(() => res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Server Error' }));
+    .catch((err) => next(err));
 };
 
-const getUserById = (req, res) => {
+const getUserById = (req, res, next) => {
   const { userId } = req.params;
   User.findById(userId)
     .orFail(new Error('NotValidId'))
@@ -19,38 +27,43 @@ const getUserById = (req, res) => {
     })
     .catch((err) => {
       if (err.message === 'NotValidId') {
-        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'User not found' });
+        return next(new NotFoundError('User not found'));
       }
       if (err.name === 'CastError') {
-        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Cast error' });
+        return next(new BadRequestError('Cast error'));
       }
-      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-        message: 'Server Error',
-      });
+      return next(err);
     });
 };
 
-const createUser = (req, res) => {
-  const { name, about, avatar } = req.body;
-  User.create({ name, about, avatar })
+const createUser = (req, res, next) => {
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
+  bcrypt
+    .hash(password, SALT_ROUNDS)
+    .then((hash) => User.create({
+      name,
+      about,
+      avatar,
+      email,
+      password: hash,
+    }))
     .then((user) => {
       res.status(httpConstants.HTTP_STATUS_CREATED).send(user);
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({
-          message: `${Object.values(err.errors)
-            .map((error) => error.message)
-            .join(', ')}`,
-        });
+      if (err.name === 'MongoServerError' && err.code === 11000) {
+        return next(new ConflictError('Email already exists'));
       }
-      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-        message: 'Server Error',
-      });
+      if (err.name === 'ValidationError') {
+        return next(new BadRequestError('Input data uncorrect'));
+      }
+      return next(err);
     });
 };
 
-const updateUserProfile = (req, res) => {
+const updateUserProfile = (req, res, next) => {
   const { name, about } = req.body;
   User.findByIdAndUpdate(
     req.user._id,
@@ -63,22 +76,16 @@ const updateUserProfile = (req, res) => {
     })
     .catch((err) => {
       if (err.message === 'NotValidId') {
-        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'User not found' });
+        return next(new NotFoundError('User not found'));
       }
       if (err.name === 'ValidationError') {
-        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({
-          message: `${Object.values(err.errors)
-            .map((error) => error.message)
-            .join(', ')}`,
-        });
+        return next(new BadRequestError('Input data incorrect'));
       }
-      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-        message: 'Server Error',
-      });
+      return next(err);
     });
 };
 
-const updateUserAvatar = (req, res) => {
+const updateUserAvatar = (req, res, next) => {
   User.findByIdAndUpdate(
     req.user._id,
     { avatar: req.body.avatar },
@@ -90,18 +97,51 @@ const updateUserAvatar = (req, res) => {
     })
     .catch((err) => {
       if (err.message === 'NotValidId') {
-        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'User not found' });
+        return next(new NotFoundError('User not found'));
       }
       if (err.name === 'ValidationError') {
-        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({
-          message: `${Object.values(err.errors)
-            .map((error) => error.message)
-            .join(', ')}`,
-        });
+        return next(new BadRequestError('Input data incorrect'));
       }
-      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-        message: 'Server Error',
+      return next(err);
+    });
+};
+
+const login = (req, res, next) => {
+  const { email, password } = req.body;
+  User.findOne({ email }).select('+password')
+    .orFail(new Error('UserNotFound'))
+    .then((user) => {
+      bcrypt.compare(password, user.password, (err, isValidPassword) => {
+        if (!isValidPassword) {
+          return next(new UnauthorizedError('Password is incorrect'));
+        }
+        const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '7d' });
+        return res.status(httpConstants.HTTP_STATUS_OK).cookie('jwt', token, {
+          maxAge: 3600000,
+          httpOnly: true,
+        })
+          .end();
       });
+    })
+    .catch((err) => {
+      if (err.message === 'UserNotFound') {
+        return next(new NotFoundError('User not found'));
+      }
+      return next(err);
+    });
+};
+
+const getCurrentUserById = (req, res, next) => {
+  User.findById(req.user._id)
+    .orFail(new Error('NotValidId'))
+    .then((user) => {
+      res.status(httpConstants.HTTP_STATUS_OK).send(user);
+    })
+    .catch((err) => {
+      if (err.message === 'NotValidId') {
+        return next(new NotFoundError('User not found'));
+      }
+      return next(err);
     });
 };
 
@@ -111,4 +151,6 @@ module.exports = {
   createUser,
   updateUserProfile,
   updateUserAvatar,
+  login,
+  getCurrentUserById,
 };

@@ -1,18 +1,18 @@
 const httpConstants = require('http2').constants;
-
 const Card = require('../models/card');
+const NotFoundError = require('../errors/not-found-error');
+const BadRequestError = require('../errors/bad-request-error');
+const DeleteForbiddenError = require('../errors/delete-forbidden-error');
 
-const getCards = (req, res) => {
+const getCards = (req, res, next) => {
   Card.find()
     .then((cards) => {
       res.status(httpConstants.HTTP_STATUS_OK).send(cards);
     })
-    .catch(() => res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-      message: 'Server Error',
-    }));
+    .catch((err) => next(err));
 };
 
-const createCard = (req, res) => {
+const createCard = (req, res, next) => {
   const { name, link } = req.body;
   const owner = req.user._id;
   Card.create({ name, link, owner })
@@ -21,42 +21,46 @@ const createCard = (req, res) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({
-          message: `${Object.values(err.errors)
-            .map((error) => error.message)
-            .join(', ')}`,
-        });
+        return next(new BadRequestError('Input data incorrect'));
       }
-      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-        message: 'Server Error',
-      });
+      return next(err);
     });
 };
 
-const deleteCardById = (req, res) => {
+const deleteCardById = (req, res, next) => {
   const { cardId } = req.params;
-  return Card.findByIdAndRemove(cardId)
+  return Card.findById(cardId)
     .orFail(new Error('NotValidId'))
     .then((card) => {
-      res.status(httpConstants.HTTP_STATUS_OK).send(card);
+      if (card.owner.toString() !== req.user._id) {
+        return next(new DeleteForbiddenError('Delete forbidden'));
+      }
+      return Card.findByIdAndRemove(cardId)
+        .then((card) => {
+          res.status(httpConstants.HTTP_STATUS_OK).send(card);
+        })
+        .catch((err) => {
+          if (err.name === 'CastError') {
+            return next(new BadRequestError('Cast error'));
+          }
+          return next(err);
+        });
     })
     .catch((err) => {
       if (err.message === 'NotValidId') {
-        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
+        return next(new NotFoundError('Card not found'));
       }
       if (err.name === 'CastError') {
-        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Cast error' });
+        return next(new BadRequestError('Cast error'));
       }
-      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-        message: 'Server Error',
-      });
+      return next(err);
     });
 };
 
-const likeCard = (req, res) => {
+const likeCard = (req, res, next) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
-    { $addToSet: { likes: req.user._id } }, // добавить _id в массив, если его там нет
+    { $addToSet: { likes: req.user._id } },
     { new: true, runValidators: true },
   )
     .orFail(new Error('NotValidId'))
@@ -65,21 +69,19 @@ const likeCard = (req, res) => {
     })
     .catch((err) => {
       if (err.message === 'NotValidId') {
-        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
+        return next(new NotFoundError('Card not found'));
       }
       if (err.name === 'CastError') {
-        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Cast error' });
+        return next(new BadRequestError('Cast error'));
       }
-      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-        message: 'Server Error',
-      });
+      return next(err);
     });
 };
 
-const dislikeCard = (req, res) => {
+const dislikeCard = (req, res, next) => {
   Card.findByIdAndUpdate(
     req.params.cardId,
-    { $pull: { likes: req.user._id } }, // убрать _id из массива
+    { $pull: { likes: req.user._id } },
     { new: true, runValidators: true },
   )
     .orFail(new Error('NotValidId'))
@@ -88,14 +90,12 @@ const dislikeCard = (req, res) => {
     })
     .catch((err) => {
       if (err.message === 'NotValidId') {
-        return res.status(httpConstants.HTTP_STATUS_NOT_FOUND).send({ message: 'Card not found' });
+        return next(new NotFoundError('Card not found'));
       }
       if (err.name === 'CastError') {
-        return res.status(httpConstants.HTTP_STATUS_BAD_REQUEST).send({ message: 'Cast error' });
+        return next(new BadRequestError('Cast error'));
       }
-      return res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({
-        message: 'Server Error',
-      });
+      return next(err);
     });
 };
 
