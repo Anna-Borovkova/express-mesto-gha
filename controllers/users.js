@@ -13,7 +13,7 @@ const { JWT_SECRET = 'SECRET_KEY' } = process.env;
 const getUsers = (req, res, next) => {
   User.find()
     .then((users) => {
-      res.status(httpConstants.HTTP_STATUS_OK).send(users);
+      res.send(users);
     })
     .catch((err) => next(err));
 };
@@ -21,14 +21,11 @@ const getUsers = (req, res, next) => {
 const getUserById = (req, res, next) => {
   const { userId } = req.params;
   User.findById(userId)
-    .orFail(new Error('NotValidId'))
+    .orFail(() => new NotFoundError('User not found'))
     .then((user) => {
-      res.status(httpConstants.HTTP_STATUS_OK).send(user);
+      res.send(user);
     })
     .catch((err) => {
-      if (err.message === 'NotValidId') {
-        return next(new NotFoundError('User not found'));
-      }
       if (err.name === 'CastError') {
         return next(new BadRequestError('Cast error'));
       }
@@ -72,14 +69,11 @@ const updateUserProfile = (req, res, next) => {
     { name, about },
     { new: true, runValidators: true },
   )
-    .orFail(new Error('NotValidId'))
+    .orFail(() => new NotFoundError('User not found'))
     .then((user) => {
-      res.status(httpConstants.HTTP_STATUS_OK).send(user);
+      res.send(user);
     })
     .catch((err) => {
-      if (err.message === 'NotValidId') {
-        return next(new NotFoundError('User not found'));
-      }
       if (err.name === 'ValidationError') {
         return next(new BadRequestError('Input data incorrect'));
       }
@@ -93,14 +87,11 @@ const updateUserAvatar = (req, res, next) => {
     { avatar: req.body.avatar },
     { new: true, runValidators: true },
   )
-    .orFail(new Error('NotValidId'))
+    .orFail(() => new NotFoundError('User not found'))
     .then((user) => {
-      res.status(httpConstants.HTTP_STATUS_OK).send(user);
+      res.send(user);
     })
     .catch((err) => {
-      if (err.message === 'NotValidId') {
-        return next(new NotFoundError('User not found'));
-      }
       if (err.name === 'ValidationError') {
         return next(new BadRequestError('Input data incorrect'));
       }
@@ -111,14 +102,14 @@ const updateUserAvatar = (req, res, next) => {
 const login = (req, res, next) => {
   const { email, password } = req.body;
   User.findOne({ email }).select('+password')
-    .orFail(new Error('UserNotFound'))
+    .orFail(() => new NotFoundError('User not found'))
     .then((user) => {
       bcrypt.compare(password, user.password, (err, isValidPassword) => {
         if (!isValidPassword) {
           return next(new UnauthorizedError('Password is incorrect'));
         }
         const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '7d' });
-        return res.status(httpConstants.HTTP_STATUS_OK).cookie('jwt', token, {
+        return res.cookie('jwt', token, {
           maxAge: 3600000,
           httpOnly: true,
         }).send({ message: 'Success' })
@@ -126,24 +117,18 @@ const login = (req, res, next) => {
       });
     })
     .catch((err) => {
-      if (err.message === 'UserNotFound') {
-        return next(new UnauthorizedError('User not found'));
-      }
-      return next(err);
+      next(err);
     });
 };
 
 const getCurrentUserById = (req, res, next) => {
   User.findById(req.user._id)
-    .orFail(new Error('NotValidId'))
+    .orFail(() => new NotFoundError('User not found'))
     .then((user) => {
-      res.status(httpConstants.HTTP_STATUS_OK).send(user);
+      res.send(user);
     })
     .catch((err) => {
-      if (err.message === 'NotValidId') {
-        return next(new NotFoundError('User not found'));
-      }
-      return next(err);
+      next(err);
     });
 };
 
