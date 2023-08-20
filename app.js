@@ -8,6 +8,7 @@ const { errors } = require('celebrate');
 const router = require('./routes/index');
 const auth = require('./middlewares/auth');
 const errorHandler = require('./middlewares/error-handler');
+const regExp = require('./utils/constants');
 
 require('dotenv').config();
 
@@ -43,7 +44,8 @@ app.post('/signup', celebrate({
     about: Joi.string().min(2).max(30),
     email: Joi.string().required().email(),
     password: Joi.string().required().min(2),
-    avatar: Joi.string(),
+    avatar: Joi.string()
+      .regex(regExp),
   }).unknown(true),
 }), createUser);
 app.use(auth);
