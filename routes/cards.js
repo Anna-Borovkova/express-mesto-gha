@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { celebrate, Joi } = require('celebrate');
+
 const regExp = require('../utils/constants');
 
 const {
